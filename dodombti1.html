@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>오피스 생존 유형 테스트</title>
+  <style>
+    * { box-sizing: border-box; font-family: 'Pretendard', sans-serif; margin: 0; padding: 0; }
+    body { background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+    .card { background: white; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); width: 100%; max-width: 450px; padding: 30px; text-align: center; }
+    h1 { font-size: 24px; color: #1e293b; margin-bottom: 12px; }
+    p { color: #64748b; font-size: 15px; line-height: 1.6; }
+    
+    .btn { display: block; width: 100%; padding: 16px; margin: 12px 0; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    .btn-main { background: #3b82f6; color: white; margin-top: 25px; }
+    .btn-choice { background: #f8fafc; color: #334155; border: 2px solid #e2e8f0; text-align: left; }
+    
+    /* 핸드폰에서 색이 남는 현상 해결! (마우스가 있는 기기에서만 호버 작동) */
+    @media (hover: hover) {
+      .btn-choice:hover { background: #eff6ff; border-color: #3b82f6; color: #1d4ed8; }
+    }
+    /* 누르는 순간에만 색이 변하도록 수정 */
+    .btn-choice:active { background: #eff6ff; border-color: #3b82f6; color: #1d4ed8; }
+
+    .progress-bar { background: #e2e8f0; border-radius: 10px; height: 8px; margin-bottom: 25px; overflow: hidden; }
+    .progress { background: #3b82f6; height: 100%; width: 0%; transition: width 0.3s; }
+    
+    .result-badge { display: inline-block; background: #dbeafe; color: #1e40af; padding: 6px 14px; border-radius: 20px; font-weight: bold; margin-bottom: 15px; font-size: 14px; }
+    .result-title { font-size: 24px; color: #1e293b; margin-bottom: 15px; font-weight: bold; word-break: keep-all; }
+    .result-img { width: 100%; max-width: 250px; border-radius: 12px; margin: 0 auto 15px; display: none; background-color: #f8fafc; padding: 20px; }
+    .result-desc { text-align: left; background: #f8fafc; border-radius: 12px; padding: 18px; margin: 20px 0; color: #334155; font-size: 15px; line-height: 1.7; word-break: keep-all; }
+    
+    .hide { display: none; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <!-- 1. 시작 화면 -->
+    <div id="start-screen">
+      <div style="font-size: 50px; margin-bottom: 15px;">🏢☕</div>
+      <h1>오피스 생존 유형 테스트</h1>
+      <p>치열한 직장/알바 생활 속에서<br>나는 어떤 캐릭터로 생존하고 있을까?</p>
+      <button class="btn btn-main" onclick="startTest()">테스트 시작하기</button>
+    </div>
+
+    <!-- 2. 질문 화면 -->
+    <div id="question-screen" class="hide">
+      <div class="progress-bar"><div id="progress" class="progress"></div></div>
+      <p id="q-number" style="font-weight: bold; color: #3b82f6; margin-bottom: 8px;"></p>
+      <h2 id="question-text" style="font-size: 19px; color: #0f172a; margin-bottom: 25px; word-break: keep-all;"></h2>
+      <button id="btnA" class="btn btn-choice" onclick="selectAnswer('A')"></button>
+      <button id="btnB" class="btn btn-choice" onclick="selectAnswer('B')"></button>
+    </div>
+
+    <!-- 3. 결과 화면 -->
+    <div id="result-screen" class="hide">
+      <span id="res-mbti" class="result-badge"></span>
+      <h2 id="res-title" class="result-title"></h2>
+      
+      <!-- 귀여운 캐릭터 이미지가 들어갈 자리 -->
+      <img id="res-img" class="result-img" src="" alt="결과 캐릭터">
+      
+      <div id="res-desc" class="result-desc"></div>
+      <button class="btn btn-main" onclick="restartTest()">다시 테스트하기</button>
+    </div>
+  </div>
+
+  <script>
+    const questions = [
+      { q: "점심시간, 팀장님이 \"오늘 다 같이 밥 먹을까?\"라고 하신다.", a: "좋아요! 법카 쓰시는 거죠? 메뉴는 제가 고를게요!", b: "아... 오늘 혼자 쉬면서 넷플릭스 보려고 했는데...", type: "EI" },
+      { q: "새로운 프로젝트를 지시받았을 때 내 머릿속은?", a: "과거 자료를 찾아서 일정과 순서부터 꼼꼼히 정리한다.", b: "이걸 이렇게 파격적으로 비틀어보면 대박 나지 않을까?", type: "SN" },
+      { q: "친한 동료가 \"나 오늘 일하기 싫어서 퇴사하고 싶어ㅠㅠ\"라고 한다면?", a: "무슨 일 있어? 팀장님이 괴롭혀? 이직 준비는 해뒀어?", b: "헐 어떡해ㅠㅠ 오늘 고생 많았지? 퇴근하고 맛있는 거 먹자!", type: "TF" },
+      { q: "중요한 업무 마감일이 딱 일주일 남았다!", a: "이미 3일 전부터 엑셀로 짜둔 계획대로 차근차근 진행 중이다.", b: "아직 일주일이나 남았네? 일은 원래 마감 직전 벼락치기지!", type: "JP" },
+      { q: "피할 수 없는 전체 회식 날, 내 모습은?", a: "다른 팀 사람들과 친해질 기회! 건배사 준비해 볼까?", b: "고기만 얌전히 먹고 눈치 보다가 2차 가기 전에 튄다.", type: "EI" },
+      { q: "엘리베이터에서 어색한 타 부서 상무님과 단둘이 탔다!", a: "\"상무님 안녕하세요! 오늘 날씨 참 좋죠?\" 스몰토크 시작.", b: "(핸드폰 보는 척하며) 제발 빨리 문 열려라...", type: "EI" },
+      { q: "팀장님이 \"이 기획안, 좀 더 '엣지(Edge)' 있게 수정해 봐\"라고 하신다.", a: "'엣지'가 정확히 어떤 의미인지 레퍼런스와 지침을 물어본다.", b: "'엣지? 아예 컨셉을 파격적으로 완전히 뒤엎어볼까?'", type: "SN" },
+      { q: "업무 중 멍때릴 때, 내 머릿속에 드는 생각은?", a: "'오늘 점심 메뉴 뭐지? 퇴근길에 세제 사가야겠다.'", b: "'만약 지금 로또 1등 당첨되면 사직서를 어떻게 멋지게 던질까?'", type: "SN" },
+      { q: "후배가 쓴 기획서에 오타와 오류가 많다. 피드백을 줄 때 나는?", a: "\"이 부분 데이터가 틀렸고 오타가 많아요. 팩트 확인해 주세요.\"", b: "\"고생 많았어요! 그런데 이 부분만 살짝 다듬으면 더 완벽할 것 같아요!\"", type: "TF" },
+      { q: "내가 들었을 때 가장 기분 좋은 상사의 칭찬은?", a: "\"보고서 퀄리티 미쳤네. 일 처리 진짜 깔끔하다.\"", b: "\"이번 프로젝트 하느라 고생 많았지? 00씨 덕분에 팀이 산다.\"", type: "TF" },
+      { q: "나의 회사 책상 상태는?", a: "모니터 위치부터 펜의 각도까지, 모든 것이 제자리에 각 잡혀 있다.", b: "겉보기엔 카오스지만 신기하게 내가 필요한 건 1초 만에 찾는다.", type: "JP" },
+      { q: "오후 회의 일정이 갑자기 2시간 앞당겨졌을 때!", a: "'아... 오늘 짜둔 업무 루틴 다 꼬였네...' 속으로 스트레스 받는다.", b: "'어차피 해야 할 거 빨리 끝내버리지 뭐!' 타격 없이 참여한다.", type: "JP" },
+      { q: "퇴근 후 길에서 우연히 회사 동료를 마주쳤다!", a: "\"어! 대리님! 퇴근하십니까?!\" 반갑게 인사하며 말을 건다.", b: "(제발 날 보지 마라...) 조용히 시선을 피하며 골목으로 돌아간다.", type: "EI" },
+      { q: "새로운 업무 프로그램(툴) 매뉴얼을 받았을 때 나는?", a: "1페이지부터 순서대로 꼼꼼히 정독하고 세팅한다.", b: "대충 훑어보고 내 감을 믿고 일단 눌러본다. 막히면 그때 찾는다.", type: "SN" },
+      { q: "동료가 \"나 이번 달 카드값 미쳤어 ㅠㅠ\" 라고 할 때", a: "\"뭐 샀는데? 할부로 긁었어?\" (카드값이 나온 원인 파악)", b: "\"헐 어떡해 ㅠㅠ 이번 달 점심은 무조건 가성비로 가자!\" (폭풍 공감)", type: "TF" },
+      { q: "다음 주 꿀 같은 연차! 나의 휴가 계획은?", a: "몇 시에 일어나서 어디를 갈지 동선까지 완벽하게 스케줄을 짠다.", b: "'일단 늦잠 푹 자고 일어나서 끌리는 곳 가야지~' 무계획이 계획이다.", type: "JP" }
+    ];
+
+    // DiceBear API를 사용해서 노션 스타일 일러스트를 자동으로 불러옵니다!
+    const imgBase = "https://api.dicebear.com/9.x/notionists/svg?backgroundColor=transparent&seed=";
+
+    const results = {
+      "ISTJ": { title: "감정 없는 '인간 엑셀'", img: imgBase + "ISTJ", desc: "오차율 0%를 자랑하는 FM의 정석. 사내 규정과 매뉴얼을 가장 잘 알고 있으며, 폴더 정리와 서류 검토는 예술의 경지에 이르렀습니다." },
+      "ISFJ": { title: "보이지 않는 '오피스 수호천사'", img: imgBase + "ISFJ", desc: "동료들이 놓친 빈칸이나 탕비실 비품을 묵묵히 채워 넣는 배려왕. 조용하지만 팀에 없어서는 안 될 소금 같은 존재입니다." },
+      "INFJ": { title: "속을 알 수 없는 '맑은 눈의 관찰자'", img: imgBase + "INFJ", desc: "늘 조용히 미소 짓고 있지만, 사내 돌아가는 판세와 사람들의 숨은 심리를 누구보다 정확하게 꿰뚫고 있는 통찰가입니다." },
+      "INTJ": { title: "효율 100% '독고다이 전략가'", img: imgBase + "INTJ", desc: "팀플보다는 혼자 일할 때 능력치가 폭발합니다. 비효율적인 회의와 쓸데없는 스몰토크를 극도로 싫어하며 문제 해결에만 집중합니다." },
+      "ISTP": { title: "조용한 '사내 위기 해결사'", img: imgBase + "ISTP", desc: "평소엔 최소한의 에너지로 월급루팡을 꿈꾸지만, 갑작스러운 오류나 위기 상황이 터지면 짠 하고 나타나 쿨하게 해결하고 사라집니다." },
+      "ISFP": { title: "물 흐르듯 사는 '프로 방관자'", img: imgBase + "ISFP", desc: "\"아~ 네네!\"가 입버릇. 남들과 얼굴 붉히는 갈등을 극도로 싫어해서 웬만하면 다 맞춰주며 평화를 유지하는 힐러입니다." },
+      "INFP": { title: "이어폰 낀 '망상 공상가'", img: imgBase + "INFP", desc: "모니터를 보며 열심히 일하는 척하지만, 머릿속으로는 이미 사표를 던지고 발리 한 달 살기 브이로그를 기획하고 있습니다." },
+      "INTP": { title: "효율에 미친 '팩트 폭격기'", img: imgBase + "INTP", desc: "\"이걸 왜 굳이 이런 방식으로 해야 하죠?\" 납득되지 않는 비효율적인 지시에는 절대 움직이지 않는 논리주의자입니다." },
+      "ESTP": { title: "위기 탈출 넘버원 '마당발'", img: imgBase + "ESTP", desc: "타 부서 사람들과도 이미 형·동생 사이. 사내 고급 정보통이자 엄청난 임기응변과 순발력으로 위기를 기회로 바꾸는 능력자입니다." },
+      "ESFP": { title: "탕비실의 '인간 비타민'", img: imgBase + "ESFP", desc: "출근하자마자 오늘 점심 메뉴와 주말 계획을 이야기하느라 바쁩니다. 삭막하고 숨 막히는 사무실에 웃음을 불어넣는 분위기 메이커입니다." },
+      "ENFP": { title: "일 벌이기 장인 '아이디어 화수분'", img: imgBase + "ENFP", desc: "\"팀장님! 저 진짜 대박 아이템 생각났어요!\" 새로운 기획은 화려하게 시작하지만, 뒤처리는 현실적인 팀원들의 몫입니다." },
+      "ENTP": { title: "상사 혈압 상승 주범 '프로 반박러'", img: imgBase + "ENTP", desc: "\"근데 그건 아닌 것 같은데요?\" 상사 앞에서도 쫄지 않고 자기 논리를 펼치는 사이다 캐릭터이자 혁신가입니다." },
+      "ESTJ": { title: "걸어 다니는 '업무 매뉴얼'", img: imgBase + "ESTJ", desc: "철저한 계획과 강력한 추진력으로 무장한 리더. 답답하게 일 못 하는 사람을 제일 싫어하며, 팀의 목표를 반드시 달성시킵니다." },
+      "ESFJ": { title: "사내 복지 및 '회식 위원장'", img: imgBase + "ESFJ", desc: "팀원들 생일과 기념일을 제일 먼저 챙기고, 회식 장소를 기가 막히게 섭외합니다. 사람 간의 정과 조화를 가장 소중하게 생각합니다." },
+      "ENFJ": { title: "다 같이 으쌰으쌰! '긍정 전도사'", img: imgBase + "ENFJ", desc: "\"우리 팀 최고! 조금만 더 힘내봐요!\" 동료들의 멘탈을 전담 마크하며 뛰어난 리더십과 공감 능력으로 팀을 이끕니다." },
+      "ENTJ": { title: "무자비한 '워커홀릭 불도저'", img: imgBase + "ENTJ", desc: "\"안 되면 되게 하라.\" 카리스마와 목표 지향적인 태도로 팀을 하드캐리합니다. 다만 팀원들이 조금 갈려 나갈 수 있습니다." }
+    };
+
+    let curIdx = 0;
+    let scores = { E: 0, I: 0, S: 0, N: 0, T: 0, F: 0, J: 0, P: 0 };
+    const totalQ = questions.length;
+
+    function startTest() {
+      document.getElementById('start-screen').classList.add('hide');
+      document.getElementById('question-screen').classList.remove('hide');
+      curIdx = 0;
+      scores = { E: 0, I: 0, S: 0, N: 0, T: 0, F: 0, J: 0, P: 0 };
+      showQuestion();
+    }
+
+    function showQuestion() {
+      const q = questions[curIdx];
+      document.getElementById('q-number').innerText = `Q${curIdx + 1} / ${totalQ}`;
+      document.getElementById('progress').style.width = `${((curIdx + 1) / totalQ) * 100}%`;
+      document.getElementById('question-text').innerText = q.q;
+      document.getElementById('btnA').innerText = q.a;
+      document.getElementById('btnB').innerText = q.b;
+      
+      // 모바일에서 다음 문제로 넘어갈 때 버튼이 눌려있는 상태(포커스)를 강제로 풀어주는 코드
+      document.getElementById('btnA').blur();
+      document.getElementById('btnB').blur();
+    }
+
+    function selectAnswer(ans) {
+      const type = questions[curIdx].type;
+      if (ans === 'A') scores[type[0]]++;
+      else scores[type[1]]++;
+
+      curIdx++;
+      if (curIdx < totalQ) {
+        showQuestion();
+      } else {
+        showResult();
+      }
+    }
+
+    function showResult() {
+      document.getElementById('question-screen').classList.add('hide');
+      document.getElementById('result-screen').classList.remove('hide');
+
+      const mbti = (scores.E >= scores.I ? 'E' : 'I') +
+                   (scores.S >= scores.N ? 'S' : 'N') +
+                   (scores.T >= scores.F ? 'T' : 'F') +
+                   (scores.J >= scores.P ? 'J' : 'P');
+
+      const res = results[mbti];
+      document.getElementById('res-mbti').innerText = mbti;
+      document.getElementById('res-title').innerText = res.title;
+      document.getElementById('res-desc').innerText = res.desc;
+      
+      const imgElement = document.getElementById('res-img');
+      imgElement.src = res.img;
+      imgElement.style.display = 'block'; 
+    }
+
+    function restartTest() {
+      document.getElementById('result-screen').classList.add('hide');
+      document.getElementById('start-screen').classList.remove('hide');
+    }
+  </script>
+</body>
+</html>
